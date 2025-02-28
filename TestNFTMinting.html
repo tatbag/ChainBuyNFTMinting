@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ERC1155 Minting DApp</title>
+    <!-- Include ethers.js via CDN (using UMD build) -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding: 0.5em;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Mint Your ERC1155 Token</h1>
+    <!-- Connect Wallet Button -->
+    <button id="connectWallet">Connect Wallet</button>
+    <br><br>
+    <!-- Input for Mint Amount -->
+    <label for="mintAmount">Mint Amount:</label>
+    <input type="number" id="mintAmount" placeholder="Amount" min="1" value="1">
+    <br><br>
+    <button id="mintToken">Mint Token</button>
+    <p id="status"></p>
+
+    <!-- Table to display minted token info -->
+    <h2>Minted Tokens</h2>
+    <table id="mintedTokensTable">
+        <thead>
+            <tr>
+                <th>Token ID</th>
+                <th>Amount</th>
+                <th>Token URI</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Minted token rows will be appended here -->
+        </tbody>
+    </table>
+
+    <script>
+        let provider, signer, tokenContract;
+        // Replace with your deployed ERC1155 contract address
+        const contractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+        const contractABI = [
+            // Minimal ABI for minting and getting token info
+            "function mint(address account, uint256 amount, bytes data) public returns (uint256)",
+            "function currentTokenID() public view returns (uint256)",
+            "function uri(uint256 tokenId) public view returns (string)"
+        ];
+
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    // Check if accounts are already connected
+                    let accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length === 0) {
+                        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    }
+                    if (accounts.length > 0) {
+                        provider = new ethers.providers.Web3Provider(window.ethereum);
+                        signer = provider.getSigner();
+                        tokenContract = new ethers.Contract(contractAddress, contractABI, signer);
+                        document.getElementById("status").innerText = "Wallet connected!";
+                    } else {
+                        document.getElementById("status").innerText = "No accounts found.";
+                    }
+                } catch (error) {
+                    console.error("Error connecting wallet:", error);
+                    document.getElementById("status").innerText = "Error connecting wallet. See console for details.";
+                }
+            } else {
+                alert("Please install MetaMask.");
+            }
+        }
+
+        async function mintToken() {
+            const rawAmount = document.getElementById("mintAmount").value;
+            const amount = parseInt(rawAmount);
+            if (!tokenContract) {
+                alert("Connect your wallet first!");
+                return;
+            }
+            try {
+                const account = await signer.getAddress();
+                document.getElementById("status").innerText = "Minting token...";
+                // Call mint with "0x" for empty data and a higher gas limit if necessary
+                const tx = await tokenContract.mint(account, amount, "0x", { gasLimit: 500000 });
+                console.log("Transaction sent:", tx.hash);
+                await tx.wait();
+                document.getElementById("status").innerText = "Token minted successfully!";
+
+                // Fetch the current token id from the contract (assuming new mint increments it)
+                const tokenId = await tokenContract.currentTokenID();
+                // Fetch the token URI for this token id
+                const tokenURI = await tokenContract.uri(tokenId);
+
+                // Append the token info to the table
+                addTokenToTable(tokenId, amount, tokenURI);
+            } catch (error) {
+                console.error("Minting failed:", error);
+                document.getElementById("status").innerText = "Error minting token: " + error.message;
+            }
+        }
+
+        function addTokenToTable(tokenId, amount, tokenURI) {
+            const tableBody = document.getElementById("mintedTokensTable").getElementsByTagName("tbody")[0];
+            const row = document.createElement("tr");
+
+            const cellTokenId = document.createElement("td");
+            cellTokenId.innerText = tokenId;
+            row.appendChild(cellTokenId);
+
+            const cellAmount = document.createElement("td");
+            cellAmount.innerText = amount;
+            row.appendChild(cellAmount);
+
+            const cellTokenURI = document.createElement("td");
+            cellTokenURI.innerText = tokenURI;
+            row.appendChild(cellTokenURI);
+
+            tableBody.appendChild(row);
+        }
+
+        document.getElementById("connectWallet").addEventListener("click", connectWallet);
+        document.getElementById("mintToken").addEventListener("click", mintToken);
+    </script>
+</body>
+
+</html>
