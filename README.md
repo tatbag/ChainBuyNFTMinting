@@ -15,7 +15,7 @@ To get started with this project, follow the instructions below.
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/ChainBuyNFTMinting.git
+    git clone https://github.com/tatbag/ChainBuyNFTMinting.git
     ```
 2. Navigate to the project directory:
     ```sh
